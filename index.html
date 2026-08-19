@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Aniversariantes - Amorim</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2 { color: #1a365d; text-align: center; margin-top: 0; }
+        .card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .card-hoje { background: #f0fdf4; border: 2px solid #22c55e; }
+        label { font-weight: bold; display: block; margin-top: 10px; font-size: 0.9em; }
+        input, textarea, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 1em; }
+        textarea { resize: vertical; height: 110px; }
+        button { background-color: #25d366; color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
+        button:hover { background-color: #128c7e; }
+        .btn-add { background-color: #2b6cb0; }
+        .btn-add:hover { background-color: #2c5282; }
+        .aluno-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; }
+        .aluno-info { font-size: 0.95em; }
+        .aluno-info span { font-size: 0.85em; color: #64748b; display: block; }
+        .acoes-item { display: flex; gap: 5px; align-items: center; }
+        .btn-wsp { padding: 8px 12px; background-color: #25d366; font-size: 0.85em; text-decoration: none; color: white; border-radius: 6px; display: inline-block; }
+        .btn-del { padding: 8px 10px; background-color: #e53e3e; font-size: 0.85em; text-decoration: none; color: white; border-radius: 6px; border: none; cursor: pointer; width: auto; margin-top: 0; }
+        .btn-del:hover { background-color: #c53030; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏢 Gestão de Aniversariantes</h1>
+
+    <!-- Configuração da Mensagem Padrão -->
+    <div class="card">
+        <h2>Mensagem Padrão</h2>
+        <label for="mensagemPadrao">Modelo (use [NOME] onde o nome do contato deve entrar):</label>
+        <textarea id="mensagemPadrao">Olá, [NOME]! 
+
+Toda a equipe deseja a você um feliz aniversário! Que este novo ano traga muita saúde, sucesso e realizações.
+
+Parabéns pelo seu dia! 🎉👏✨</textarea>
+        <button class="btn-add" onclick="salvarMensagem()">Salvar Mensagem</button>
+    </div>
+
+    <!-- Cadastro de Pessoas -->
+    <div class="card">
+        <h2>Cadastrar Novo Contato</h2>
+        <label>Nome Completo:</label>
+        <input type="text" id="nome" placeholder="Ex: João Silva">
+        
+        <label>Data de Nascimento:</label>
+        <input type="date" id="dataNasc">
+        
+        <label>WhatsApp (com DDD):</label>
+        <input type="tel" id="telefone" placeholder="27999998888">
+        
+        <button class="btn-add" onclick="cadastrarAluno()">Cadastrar Contato</button>
+    </div>
+
+    <!-- Aniversariantes de Hoje -->
+    <div class="card card-hoje">
+        <h2 style="color: #15803d;">🎈 Aniversariantes de HOJE</h2>
+        <div id="listaAniversariantesHoje">Carregando...</div>
+    </div>
+
+    <!-- Lista de Aniversariantes do Mês -->
+    <div class="card">
+        <h2>🎉 Aniversariantes do Mês (Ordenados por Dia)</h2>
+        <div id="listaAniversariantes">Carregando dados...</div>
+    </div>
+
+    <!-- Lista Geral -->
+    <div class="card">
+        <h2>📋 Todos os Cadastrados</h2>
+        <div id="listaTodosAlunos">Carregando dados...</div>
+    </div>
+</div>
+
+<!-- Lógica Firebase -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Configuração exclusiva do Cliente Amorim
+    const firebaseConfig = {
+      apiKey: "AIzaSyArozUniPr3MwNLPA0IZHx4NsSRdNpprbg",
+      authDomain: "clienteamorim-d4b9d.firebaseapp.com",
+      projectId: "clienteamorim-d4b9d",
+      storageBucket: "clienteamorim-d4b9d.firebasestorage.app",
+      messagingSenderId: "406146515100",
+      appId: "1:406146515100:web:4336bf35be780890012d59"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let alunosCache = [];
+
+    window.cadastrarAluno = async function() {
+        const nome = document.getElementById('nome').value.trim();
+        const dataNasc = document.getElementById('dataNasc').value;
+        let telefone = document.getElementById('telefone').value.replace(/\D/g, '');
+
+        if (!nome || !dataNasc || !telefone) {
+            alert('Por favor, preencha todos os campos!');
+            return;
+        }
+
+        if (telefone.length === 10 || telefone.length === 11) {
+            telefone = '55' + telefone;
+        }
+
+        try {
+            await addDoc(collection(db, "alunos"), { nome, dataNasc, telefone });
+            alert('Cadastrado com sucesso!');
+            
+            document.getElementById('nome').value = '';
+            document.getElementById('dataNasc').value = '';
+            document.getElementById('telefone').value = '';
+
+            carregarAniversariantes();
+        } catch (e) {
+            console.error("Erro ao cadastrar: ", e);
+            alert('Erro ao cadastrar. Verifique o banco de dados.');
+        }
+    }
+
+    window.deletarAluno = async function(id) {
+        if (confirm('Deseja realmente excluir este cadastro?')) {
+            try {
+                await deleteDoc(doc(db, "alunos", id));
+                carregarAniversariantes();
+            } catch (e) {
+                console.error("Erro ao deletar: ", e);
+            }
+        }
+    }
+
+    window.salvarMensagem = async function() {
+        const msg = document.getElementById('mensagemPadrao').value;
+        try {
+            await setDoc(doc(db, "config", "mensagem"), { texto: msg });
+            alert('Mensagem padrão salva com sucesso!');
+            carregarAniversariantes();
+        } catch (e) {
+            console.error("Erro ao salvar mensagem: ", e);
+        }
+    }
+
+    async function carregarConfiguracoes() {
+        try {
+            const docRef = doc(db, "config", "mensagem");
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data().texto) {
+                document.getElementById('mensagemPadrao').value = docSnap.data().texto;
+            }
+        } catch (e) {
+            console.log("Usando mensagem padrão inicial.");
+        }
+    }
+
+    async function carregarAniversariantes() {
+        const listaDiv = document.getElementById('listaAniversariantes');
+        const listaHojeDiv = document.getElementById('listaAniversariantesHoje');
+        const listaTodosDiv = document.getElementById('listaTodosAlunos');
+        
+        listaDiv.innerHTML = 'Carregando...';
+        listaHojeDiv.innerHTML = 'Carregando...';
+        listaTodosDiv.innerHTML = 'Carregando...';
+
+        try {
+            const querySnapshot = await getDocs(collection(db, "alunos"));
+            alunosCache = [];
+            querySnapshot.forEach((docSnap) => {
+                alunosCache.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            const hoje = new Date();
+            const diaHoje = hoje.getDate();
+            const mesAtual = hoje.getMonth();
+            const msgPadrao = document.getElementById('mensagemPadrao').value;
+
+            // Filtra aniversariantes do mês
+            let aniversariantesDoMes = alunosCache.filter(aluno => {
+                const data = new Date(aluno.dataNasc + 'T00:00:00');
+                return data.getMonth() === mesAtual;
+            });
+
+            // Ordena por dia do mês
+            aniversariantesDoMes.sort((a, b) => {
+                const diaA = new Date(a.dataNasc + 'T00:00:00').getDate();
+                const diaB = new Date(b.dataNasc + 'T00:00:00').getDate();
+                return diaA - diaB;
+            });
+
+            // Filtra aniversariantes do dia
+            const aniversariantesHoje = aniversariantesDoMes.filter(aluno => {
+                const dia = new Date(aluno.dataNasc + 'T00:00:00').getDate();
+                return dia === diaHoje;
+            });
+
+            // 1. Renderiza Hoje
+            listaHojeDiv.innerHTML = '';
+            if (aniversariantesHoje.length === 0) {
+                listaHojeDiv.innerHTML = '<p style="text-align:center; color:#15803d; margin:0;">Nenhum aniversariante hoje. 🎂</p>';
+            } else {
+                aniversariantesHoje.forEach(aluno => {
+                    const textoMensagem = msgPadrao.replace('[NOME]', aluno.nome);
+                    const linkWhatsApp = `https://wa.me/${aluno.telefone}?text=${encodeURIComponent(textoMensagem)}`;
+
+                    const item = document.createElement('div');
+                    item.className = 'aluno-item';
+                    item.style.borderColor = '#86efac';
+                    item.innerHTML = `
+                        <div class="aluno-info">
+                            <strong style="color: #15803d; font-size: 1.05em;">🎉 ${aluno.nome}</strong>
+                            <span style="color: #166534; font-weight: bold;">Hoje!</span>
+                        </div>
+                        <div class="acoes-item">
+                            <a href="${linkWhatsApp}" target="_blank" class="btn-wsp">Enviar Mensagem</a>
+                        </div>
+                    `;
+                    listaHojeDiv.appendChild(item);
+                });
+            }
+
+            // 2. Renderiza Lista do Mês
+            listaDiv.innerHTML = '';
+            if (aniversariantesDoMes.length === 0) {
+                listaDiv.innerHTML = '<p style="text-align:center; color:#64748b;">Nenhum aniversariante cadastrado para este mês.</p>';
+            } else {
+                aniversariantesDoMes.forEach(aluno => {
+                    const data = new Date(aluno.dataNasc + 'T00:00:00');
+                    const dia = String(data.getDate()).padStart(2, '0');
+                    const mes = String(data.getMonth() + 1).padStart(2, '0');
+
+                    const textoMensagem = msgPadrao.replace('[NOME]', aluno.nome);
+                    const linkWhatsApp = `https://wa.me/${aluno.telefone}?text=${encodeURIComponent(textoMensagem)}`;
+
+                    const item = document.createElement('div');
+                    item.className = 'aluno-item';
+                    item.innerHTML = `
+                        <div class="aluno-info">
+                            <strong>${aluno.nome}</strong>
+                            <span>Aniversário: ${dia}/${mes}</span>
+                        </div>
+                        <div class="acoes-item">
+                            <a href="${linkWhatsApp}" target="_blank" class="btn-wsp">Enviar Mensagem</a>
+                            <button class="btn-del" onclick="deletarAluno('${aluno.id}')">Excluir</button>
+                        </div>
+                    `;
+                    listaDiv.appendChild(item);
+                });
+            }
+
+            // 3. Renderiza Todos (Ordem Alfabética)
+            listaTodosDiv.innerHTML = '';
+            if (alunosCache.length === 0) {
+                listaTodosDiv.innerHTML = '<p style="text-align:center; color:#64748b;">Nenhum registro cadastrado.</p>';
+            } else {
+                let todosOrdenados = [...alunosCache].sort((a, b) => a.nome.localeCompare(b.nome));
+
+                todosOrdenados.forEach(aluno => {
+                    const data = new Date(aluno.dataNasc + 'T00:00:00');
+                    const dia = String(data.getDate()).padStart(2, '0');
+                    const mes = String(data.getMonth() + 1).padStart(2, '0');
+
+                    const item = document.createElement('div');
+                    item.className = 'aluno-item';
+                    item.innerHTML = `
+                        <div class="aluno-info">
+                            <strong>${aluno.nome}</strong>
+                            <span>Data Nasc.: ${dia}/${mes} | Tel: ${aluno.telefone}</span>
+                        </div>
+                        <div class="acoes-item">
+                            <button class="btn-del" onclick="deletarAluno('${aluno.id}')">Excluir</button>
+                        </div>
+                    `;
+                    listaTodosDiv.appendChild(item);
+                });
+            }
+
+        } catch (e) {
+            console.error("Erro ao carregar:", e);
+            listaDiv.innerHTML = '<p style="text-align:center; color:red;">Erro ao carregar dados. Verifique se criou o banco Firestore.</p>';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        await carregarConfiguracoes();
+        await carregarAniversariantes();
+    });
+</script>
+
+</body>
+</html>
