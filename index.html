@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Aniversariantes - Amorim</title>
+    <title>Gestão de Aniversariantes - Amorim Contabilidade</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
@@ -22,7 +22,7 @@
         .aluno-info { font-size: 0.95em; }
         .aluno-info span { font-size: 0.85em; color: #64748b; display: block; }
         .acoes-item { display: flex; gap: 5px; align-items: center; }
-        .btn-wsp { padding: 8px 12px; background-color: #25d366; font-size: 0.85em; text-decoration: none; color: white; border-radius: 6px; display: inline-block; }
+        .btn-wsp { padding: 8px 12px; background-color: #25d366; font-size: 0.85em; text-decoration: none; color: white; border-radius: 6px; display: inline-block; font-weight: bold; }
         .btn-del { padding: 8px 10px; background-color: #e53e3e; font-size: 0.85em; text-decoration: none; color: white; border-radius: 6px; border: none; cursor: pointer; width: auto; margin-top: 0; }
         .btn-del:hover { background-color: #c53030; }
     </style>
@@ -35,12 +35,14 @@
     <!-- Configuração da Mensagem Padrão -->
     <div class="card">
         <h2>Mensagem Padrão</h2>
-        <label for="mensagemPadrao">Modelo (use [NOME] onde o nome do contato deve entrar):</label>
-        <textarea id="mensagemPadrao">Olá, [NOME]! 
+        <label for="mensagemPadrao">Modelo (use *[NOME]* onde o nome do contato deve entrar):</label>
+        <textarea id="mensagemPadrao">Olá, *[NOME]*! 
 
-Toda a equipe deseja a você um feliz aniversário! Que este novo ano traga muita saúde, sucesso e realizações.
+Toda a equipe da *Amorim Contabilidade* deseja a você um feliz aniversário! 🎂✨
 
-Parabéns pelo seu dia! 🎉👏✨</textarea>
+Que este novo ciclo traga muita saúde, paz, prosperidade e grande sucesso em seus projetos. 
+
+Parabéns pelo seu dia! 🎉👏</textarea>
         <button class="btn-add" onclick="salvarMensagem()">Salvar Mensagem</button>
     </div>
 
@@ -208,7 +210,8 @@ Parabéns pelo seu dia! 🎉👏✨</textarea>
             } else {
                 aniversariantesHoje.forEach(aluno => {
                     const textoMensagem = msgPadrao.replace('[NOME]', aluno.nome);
-                    const linkWhatsApp = `https://wa.me/${aluno.telefone}?text=${encodeURIComponent(textoMensagem)}`;
+                    // Uso da API oficial do WhatsApp para preservação de emojis e caracteres especiais
+                    const linkWhatsApp = `https://api.whatsapp.com/send?phone=${aluno.telefone}&text=${encodeURIComponent(textoMensagem)}`;
 
                     const item = document.createElement('div');
                     item.className = 'aluno-item';
@@ -237,7 +240,7 @@ Parabéns pelo seu dia! 🎉👏✨</textarea>
                     const mes = String(data.getMonth() + 1).padStart(2, '0');
 
                     const textoMensagem = msgPadrao.replace('[NOME]', aluno.nome);
-                    const linkWhatsApp = `https://wa.me/${aluno.telefone}?text=${encodeURIComponent(textoMensagem)}`;
+                    const linkWhatsApp = `https://api.whatsapp.com/send?phone=${aluno.telefone}&text=${encodeURIComponent(textoMensagem)}`;
 
                     const item = document.createElement('div');
                     item.className = 'aluno-item';
